@@ -565,7 +565,7 @@ ul {
     .input-group {
         flex-direction: column;
     }
-    .input-group .btn {
+    .btn {
         width: 100%;
     }
 
