@@ -1,0 +1,12 @@
+{
+  "name": "medigo",
+  "version": "1.0.0",
+  "description": "Secure, Compliant Medical Courier Services",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve ."
+  },
+  "dependencies": {
+    "serve": "^14.2.4"
+  }
+}
