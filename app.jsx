@@ -141,7 +141,8 @@ const App = () => {
     const [trackResult, setTrackResult] = useState(null);
     const [pills, setPills] = useState([
         { name:"Lisinopril 10mg", time:"08:00 AM" },
-        { name:"Vitamin D3",      time:"01:00 PM" }
+        { name:"Vitamin D3",      time:"01:00 PM" },
+        { name:"Paracetamol",     time:"09:00 PM" }
     ]);
     const [newPillName, setNewPillName] = useState("");
     const [newPillTime, setNewPillTime] = useState("");
@@ -261,7 +262,7 @@ const App = () => {
             keys: ['track','tracking','where is','locate','status','shipment','parcel','package','delivery status'],
             replies: [
                 "📦 To track your parcel, scroll up to the **Track Your Medical Parcel** box on the homepage and enter your **8–10 character tracking number** (e.g. MP12345678). Results appear in seconds!",
-                "🔍 Your tracking number was sent via SMS/email when your order was dispatched. Enter it in the tracking box at the top of the page. Need help finding your number? Call 1-800-555-M-PAK.",
+                "🔍 Your tracking number was sent via SMS/email when your order was dispatched. Enter it in the tracking box at the top of the page. Need help finding your number? Call 110-486-309.",
                 "📍 Live tracking is available 24/7. Use the tracking section on the homepage — just type your number like **MP12345678** and hit Track. Status updates every few minutes."
             ],
             followUps: ['Track number format','Parcel delayed?','Contact support']
@@ -296,9 +297,9 @@ const App = () => {
         {
             keys: ['price','cost','fee','charge','rate','quote','how much','billing','payment'],
             replies: [
-                "💰 Pricing is tailored based on **distance**, **urgency**, and **package type** (e.g., refrigerated items cost more). Contact us at 1-800-555-M-PAK for an instant quote — it usually takes under 2 minutes!",
-                "📊 We offer tiered pricing: Standard (3–5 hrs), Express (1–2 hrs), and Emergency (<30 min). Exact costs vary. Call 1-800-555-M-PAK or email dispatch@medigosystems.com for a quote.",
-                "🏷️ Our rates are competitive and transparent with no hidden fees. For prescription deliveries, insurance co-pays may apply. Get a free quote by calling 1-800-555-M-PAK."
+                "💰 Pricing is tailored based on **distance**, **urgency**, and **package type** (e.g., refrigerated items cost more). Contact us at 110-486-309 for an instant quote — it usually takes under 2 minutes!",
+                "📊 We offer tiered pricing: Standard (3–5 hrs), Express (1–2 hrs), and Emergency (<30 min). Exact costs vary. Call 110-486-309 or email Medigotrack@gmail.com for a quote.",
+                "🏷️ Our rates are competitive and transparent with no hidden fees. For prescription deliveries, insurance co-pays may apply. Get a free quote by calling 110-486-309."
             ],
             followUps: ['Insurance coverage','Payment methods','Get a quote']
         },
@@ -307,7 +308,7 @@ const App = () => {
             replies: [
                 "⏱️ Delivery times: **Emergency** orders arrive in 15–30 min, **Express** in 1–2 hours, **Standard** in 3–5 hours. Real-time ETAs are shown on the live tracking map after dispatch.",
                 "🚀 Our Emergency Drone dispatch averages **18 minutes** to pickup. Standard courier takes 3–5 hours. Track your exact ETA live once your order is placed!",
-                "📅 If your shipment is delayed beyond the estimated window, please call 1-800-555-M-PAK immediately. We have a delay guarantee — if we're late, you get a priority re-dispatch."
+                "📅 If your shipment is delayed beyond the estimated window, please call 110-486-309 immediately. We have a delay guarantee — if we're late, you get a priority re-dispatch."
             ],
             followUps: ['Track live ETA','Report a delay','Express options']
         },
@@ -332,9 +333,9 @@ const App = () => {
         {
             keys: ['contact','phone','email','reach','call','support','help','agent','human','operator'],
             replies: [
-                "📞 Reach our team 24/7:\n• **Phone:** 1-800-555-M-PAK\n• **Email:** dispatch@medigosystems.com\n• **Address:** 123 Healthway Blvd, Suite 400, Metropolis, NY 10001",
-                "💬 You can contact us via phone at **1-800-555-M-PAK** for immediate assistance, or email **dispatch@medigosystems.com** for non-urgent inquiries. Average response time is under 3 minutes!",
-                "🧑‍💼 To speak with a live agent, call **1-800-555-M-PAK** — we're available 24/7/365. For prescription queries, ask for our pharmacy coordination desk."
+                "📞 Reach our team 24/7:\n• **Phone:** 110-486-309\n• **Email:** Medigotrack@gmail.com\n• **Address:** 123 Healthway Blvd, Suite 400, Metropolis, NY 10001",
+                "💬 You can contact us via phone at **110-486-309** for immediate assistance, or email **Medigotrack@gmail.com** for non-urgent inquiries. Average response time is under 3 minutes!",
+                "🧑‍💼 To speak with a live agent, call **110-486-309** — we're available 24/7/365. For prescription queries, ask for our pharmacy coordination desk."
             ],
             followUps: ['Operating hours','Email support','Office location']
         },
@@ -350,17 +351,17 @@ const App = () => {
         {
             keys: ['cancel','cancellation','change order','modify','update order','wrong address','mistake'],
             replies: [
-                "✏️ To cancel or modify an order, call us **immediately** at 1-800-555-M-PAK. Orders can be modified within **10 minutes** of placement before courier dispatch.",
-                "⚠️ Once a courier is dispatched, cancellation may incur a small fee. Contact us right away at 1-800-555-M-PAK to minimize charges and arrange changes.",
-                "🔄 Address changes must be requested before the package leaves the facility. Call 1-800-555-M-PAK with your tracking number ready for fastest resolution."
+                "✏️ To cancel or modify an order, call us **immediately** at 110-486-309. Orders can be modified within **10 minutes** of placement before courier dispatch.",
+                "⚠️ Once a courier is dispatched, cancellation may incur a small fee. Contact us right away at 110-486-309 to minimize charges and arrange changes.",
+                "🔄 Address changes must be requested before the package leaves the facility. Call 110-486-309 with your tracking number ready for fastest resolution."
             ],
             followUps: ['Track my order','Contact support','Refund policy']
         },
         {
             keys: ['refund','money back','return','reimburse','charge dispute','overcharged'],
             replies: [
-                "💳 Refund requests are processed within **3–5 business days**. Email dispatch@medigosystems.com with your order ID and reason. We have a 100% satisfaction guarantee for failed deliveries.",
-                "🔁 If your delivery was lost, damaged, or significantly delayed beyond our SLA, you're eligible for a full refund or re-dispatch at no cost. Call 1-800-555-M-PAK to initiate.",
+                "💳 Refund requests are processed within **3–5 business days**. Email Medigotrack@gmail.com with your order ID and reason. We have a 100% satisfaction guarantee for failed deliveries.",
+                "🔁 If your delivery was lost, damaged, or significantly delayed beyond our SLA, you're eligible for a full refund or re-dispatch at no cost. Call 110-486-309 to initiate.",
                 "✅ We stand behind every delivery. If something went wrong, contact us within **48 hours** of the scheduled delivery for a full investigation and refund/re-delivery."
             ],
             followUps: ['Contact support','Order status','Re-delivery options']
@@ -377,9 +378,9 @@ const App = () => {
         {
             keys: ['area','coverage','deliver to','location','city','state','region','nationwide','international'],
             replies: [
-                "🗺️ We currently serve **all major metropolitan areas** across the US, with expanding coverage in suburban regions. Call 1-800-555-M-PAK to confirm delivery to your specific zip code.",
+                "🗺️ We currently serve **all major metropolitan areas** across India, with expanding coverage in suburban regions. Call 110-486-309 to confirm delivery to your specific zip code.",
                 "📍 Medigo covers 50+ cities nationwide. Enter your delivery address in any order form — if we can't reach you directly, we'll connect you to a partner courier network.",
-                "🌎 We handle domestic deliveries across the US. International medical logistics partnerships are available for select countries — contact us for details."
+                "🌎 We handle domestic deliveries across India. International medical logistics partnerships are available for select countries — contact us for details."
             ],
             followUps: ['Check my zip code','International inquiry','Partner network']
         }
@@ -399,7 +400,7 @@ const App = () => {
             return { reply, followUps: bestMatch.followUps };
         }
         return {
-            reply: "🤔 I'm not sure I caught that. Could you rephrase? You can also reach a live agent at **1-800-555-M-PAK** or email **dispatch@medigosystems.com** for complex queries.",
+            reply: "🤔 I'm not sure I caught that. Could you rephrase? You can also reach a live agent at **110-486-309** or email **Medigotrack@gmail.com** for complex queries.",
             followUps: ['Track my order','Our services','Contact support','Emergency help']
         };
     };
@@ -433,7 +434,7 @@ const App = () => {
     };
 
     const emergencySimCfg = {
-        initStatus:"Courier Dispatched — En Route to Pickup", initEta:"12 Mins", initIcon:"🚁",
+        initStatus:"Courier Dispatched — En Route to Pickup", initEta:"15 Mins", initIcon:"🚚",
         s30:"Package Secured at Pickup", e30:"10 Mins", i30:"🚚",
         s50:"In Transit via Highway", e50:"7 Mins",
         s70:"Approaching Destination", e70:"2 Mins",
@@ -597,8 +598,8 @@ const App = () => {
                 <div className="footer-info">
                     <h3>Medigo Systems</h3>
                     <p>123 Healthway Blvd, Suite 400<br/>Metropolis, NY 10001</p>
-                    <p>Phone: 1-800-555-M-PAK</p>
-                    <p>Email: dispatch@medigosystems.com</p>
+                    <p>Phone: 110-486-309</p>
+                    <p>Email: Medigotrack@gmail.com</p>
                 </div>
                 <div className="footer-links">
                     <h4>Quick Links</h4>
