@@ -244,6 +244,52 @@ const App = () => {
     const openModal = (name) => { setActiveModal(name); setModalStep(1); setOrderPriority("Normal"); };
     const closeModal = () => { setActiveModal(null); setModalStep(1); };
 
+    // ── Patient Profile (persisted in localStorage) ──
+    const PROFILE_KEY = 'medigo_patient_profile';
+    const loadProfile = () => {
+        try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || null; } catch { return null; }
+    };
+    const defaultProfile = { name:"", phone:"", address:"", medicines:[] };
+    const [profile, setProfile] = useState(() => loadProfile() || defaultProfile);
+    const [editingProfile, setEditingProfile] = useState(!loadProfile());
+    const [profileDraft, setProfileDraft] = useState(() => loadProfile() || defaultProfile);
+    const [newMedInput, setNewMedInput] = useState("");
+    const [quickOrderSuccess, setQuickOrderSuccess] = useState(false);
+
+    useEffect(() => {
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    }, [profile]);
+
+    const saveProfile = () => {
+        setProfile(profileDraft);
+        setEditingProfile(false);
+    };
+    const addProfileMed = () => {
+        const m = newMedInput.trim();
+        if(!m || profileDraft.medicines.includes(m)) return;
+        setProfileDraft(d => ({...d, medicines:[...d.medicines, m]}));
+        setNewMedInput("");
+    };
+    const removeProfileMed = (med) => setProfileDraft(d => ({...d, medicines:d.medicines.filter(x=>x!==med)}));
+
+    const handleQuickReorder = () => {
+        if(!profile.medicines.length || !profile.address) return;
+        const prefix = "MQ";
+        const num = Math.floor(10000 + Math.random() * 90000);
+        const id = `${prefix}-${num}`;
+        const entry = {
+            id,
+            type: 'prescription',
+            priority: "Normal",
+            status: "In Queue",
+            placedAt: new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}),
+            note: `Quick Reorder for ${profile.name || 'Patient'} — ${profile.medicines.join(', ')}`,
+        };
+        setGlobalQueue(prev => [entry, ...prev]);
+        setQuickOrderSuccess(true);
+        setTimeout(() => setQuickOrderSuccess(false), 3500);
+    };
+
     const submitToQueue = () => {
         const prefix = "MQ";
         const num = Math.floor(10000 + Math.random() * 90000);
@@ -684,7 +730,7 @@ const App = () => {
             <div className="container">
                 <div className="section-title">
                     <h2>Patient Portal</h2>
-                    <p>Manage your health records and set medication reminders.</p>
+                    <p>Manage your health records, medication reminders, and quick reorder profile.</p>
                 </div>
                 <div className="portal-grid">
                     <div className="portal-card">
@@ -712,6 +758,158 @@ const App = () => {
                                 <li key={i}><span>{p.name}</span><span className="pill-time-badge">{p.time}</span></li>
                             ))}
                         </ul>
+                    </div>
+                </div>
+
+                {/* ── Quick Reorder Profile ── */}
+                <div style={{marginTop:"32px"}}>
+                    <div style={{
+                        background:"linear-gradient(135deg,#1e1b4b,#312e81)",borderRadius:"20px",
+                        padding:"32px",color:"#f1f5f9",position:"relative",overflow:"hidden"
+                    }}>
+                        {/* Background decoration */}
+                        <div style={{position:"absolute",top:"-40px",right:"-40px",width:"180px",height:"180px",borderRadius:"50%",background:"rgba(139,92,246,0.15)"}}></div>
+                        <div style={{position:"absolute",bottom:"-30px",left:"60px",width:"120px",height:"120px",borderRadius:"50%",background:"rgba(99,102,241,0.1)"}}></div>
+
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:"12px",marginBottom:"24px",position:"relative"}}>
+                            <div>
+                                <h3 style={{color:"#f8fafc",margin:0,fontSize:"1.3rem",display:"flex",alignItems:"center",gap:"10px"}}>
+                                    ⚡ Quick Reorder Profile
+                                </h3>
+                                <p style={{color:"#a5b4fc",marginTop:"4px",fontSize:"0.88rem"}}>Save your details once. Reorder regular medicines in one click.</p>
+                            </div>
+                            {!editingProfile && (
+                                <button onClick={()=>{setProfileDraft({...profile});setEditingProfile(true);}} style={{
+                                    padding:"8px 18px",borderRadius:"8px",border:"1px solid #6366f1",
+                                    background:"rgba(99,102,241,0.2)",color:"#a5b4fc",fontWeight:600,cursor:"pointer",fontSize:"0.85rem"
+                                }}>✏️ Edit Profile</button>
+                            )}
+                        </div>
+
+                        {editingProfile ? (
+                            /* ── Edit Mode ── */
+                            <div style={{position:"relative"}}>
+                                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"14px",marginBottom:"16px"}}>
+                                    <div>
+                                        <label style={{display:"block",marginBottom:"6px",fontSize:"0.8rem",fontWeight:600,color:"#a5b4fc",textTransform:"uppercase",letterSpacing:"0.05em"}}>Full Name</label>
+                                        <input value={profileDraft.name} onChange={e=>setProfileDraft(d=>({...d,name:e.target.value}))}
+                                            placeholder="e.g. Ravi Kumar"
+                                            style={{width:"100%",padding:"10px 14px",borderRadius:"10px",border:"1px solid #4338ca",background:"rgba(0,0,0,0.3)",color:"#f1f5f9",outline:"none",fontSize:"0.95rem",boxSizing:"border-box"}}/>
+                                    </div>
+                                    <div>
+                                        <label style={{display:"block",marginBottom:"6px",fontSize:"0.8rem",fontWeight:600,color:"#a5b4fc",textTransform:"uppercase",letterSpacing:"0.05em"}}>Phone</label>
+                                        <input value={profileDraft.phone} onChange={e=>setProfileDraft(d=>({...d,phone:e.target.value}))}
+                                            placeholder="+91 XXXXX XXXXX"
+                                            style={{width:"100%",padding:"10px 14px",borderRadius:"10px",border:"1px solid #4338ca",background:"rgba(0,0,0,0.3)",color:"#f1f5f9",outline:"none",fontSize:"0.95rem",boxSizing:"border-box"}}/>
+                                    </div>
+                                </div>
+                                <div style={{marginBottom:"16px"}}>
+                                    <label style={{display:"block",marginBottom:"6px",fontSize:"0.8rem",fontWeight:600,color:"#a5b4fc",textTransform:"uppercase",letterSpacing:"0.05em"}}>Delivery Address</label>
+                                    <input value={profileDraft.address} onChange={e=>setProfileDraft(d=>({...d,address:e.target.value}))}
+                                        placeholder="Flat 4B, Rose Apartments, MG Road, Bengaluru 560001"
+                                        style={{width:"100%",padding:"10px 14px",borderRadius:"10px",border:"1px solid #4338ca",background:"rgba(0,0,0,0.3)",color:"#f1f5f9",outline:"none",fontSize:"0.95rem",boxSizing:"border-box"}}/>
+                                </div>
+                                <div style={{marginBottom:"20px"}}>
+                                    <label style={{display:"block",marginBottom:"8px",fontSize:"0.8rem",fontWeight:600,color:"#a5b4fc",textTransform:"uppercase",letterSpacing:"0.05em"}}>Regular Medicines</label>
+                                    <div style={{display:"flex",gap:"8px",marginBottom:"10px"}}>
+                                        <input value={newMedInput} onChange={e=>setNewMedInput(e.target.value)}
+                                            onKeyDown={e=>e.key==='Enter'&&(e.preventDefault(),addProfileMed())}
+                                            placeholder="e.g. Metformin 500mg"
+                                            style={{flex:1,padding:"10px 14px",borderRadius:"10px",border:"1px solid #4338ca",background:"rgba(0,0,0,0.3)",color:"#f1f5f9",outline:"none",fontSize:"0.9rem"}}/>
+                                        <button type="button" onClick={addProfileMed} style={{
+                                            padding:"10px 18px",borderRadius:"10px",border:"none",
+                                            background:"#6366f1",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:"0.9rem"
+                                        }}>+ Add</button>
+                                    </div>
+                                    <div style={{display:"flex",flexWrap:"wrap",gap:"8px"}}>
+                                        {profileDraft.medicines.map(med=>(
+                                            <span key={med} style={{
+                                                display:"inline-flex",alignItems:"center",gap:"6px",
+                                                background:"rgba(99,102,241,0.25)",color:"#c7d2fe",
+                                                padding:"5px 12px",borderRadius:"20px",fontSize:"0.85rem",fontWeight:500
+                                            }}>
+                                                💊 {med}
+                                                <span onClick={()=>removeProfileMed(med)} style={{cursor:"pointer",color:"#f87171",fontWeight:800,marginLeft:"2px"}}>×</span>
+                                            </span>
+                                        ))}
+                                        {!profileDraft.medicines.length && <span style={{color:"#6366f1",fontSize:"0.85rem",fontStyle:"italic"}}>No medicines added yet.</span>}
+                                    </div>
+                                </div>
+                                <div style={{display:"flex",gap:"10px"}}>
+                                    <button onClick={saveProfile} style={{
+                                        flex:2,padding:"12px",borderRadius:"10px",border:"none",
+                                        background:"linear-gradient(135deg,#6366f1,#4f46e5)",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:"1rem"
+                                    }}>✅ Save Profile</button>
+                                    {loadProfile() && <button onClick={()=>setEditingProfile(false)} style={{
+                                        flex:1,padding:"12px",borderRadius:"10px",border:"1px solid #4338ca",
+                                        background:"transparent",color:"#94a3b8",fontWeight:600,cursor:"pointer",fontSize:"0.9rem"
+                                    }}>Cancel</button>}
+                                </div>
+                            </div>
+                        ) : (
+                            /* ── Saved Profile View ── */
+                            <div style={{position:"relative"}}>
+                                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:"16px",marginBottom:"24px"}}>
+                                    <div style={{background:"rgba(0,0,0,0.25)",borderRadius:"12px",padding:"16px"}}>
+                                        <div style={{color:"#a5b4fc",fontSize:"0.75rem",fontWeight:600,textTransform:"uppercase",marginBottom:"4px"}}>Patient Name</div>
+                                        <div style={{color:"#f1f5f9",fontWeight:700,fontSize:"1rem"}}>{profile.name || "—"}</div>
+                                    </div>
+                                    <div style={{background:"rgba(0,0,0,0.25)",borderRadius:"12px",padding:"16px"}}>
+                                        <div style={{color:"#a5b4fc",fontSize:"0.75rem",fontWeight:600,textTransform:"uppercase",marginBottom:"4px"}}>Phone</div>
+                                        <div style={{color:"#f1f5f9",fontWeight:700,fontSize:"1rem"}}>{profile.phone || "—"}</div>
+                                    </div>
+                                    <div style={{background:"rgba(0,0,0,0.25)",borderRadius:"12px",padding:"16px",gridColumn:"1/-1"}}>
+                                        <div style={{color:"#a5b4fc",fontSize:"0.75rem",fontWeight:600,textTransform:"uppercase",marginBottom:"4px"}}>📍 Delivery Address</div>
+                                        <div style={{color:"#f1f5f9",fontWeight:600,fontSize:"0.95rem"}}>{profile.address || "—"}</div>
+                                    </div>
+                                </div>
+
+                                <div style={{marginBottom:"24px"}}>
+                                    <div style={{color:"#a5b4fc",fontSize:"0.8rem",fontWeight:600,textTransform:"uppercase",marginBottom:"10px"}}>💊 Saved Medicines</div>
+                                    {profile.medicines.length === 0 ? (
+                                        <p style={{color:"#6366f1",fontSize:"0.88rem",fontStyle:"italic"}}>No medicines saved. Click Edit Profile to add your regular medicines.</p>
+                                    ) : (
+                                        <div style={{display:"flex",flexWrap:"wrap",gap:"8px"}}>
+                                            {profile.medicines.map(med=>(
+                                                <span key={med} style={{
+                                                    background:"rgba(99,102,241,0.2)",color:"#c7d2fe",
+                                                    padding:"6px 14px",borderRadius:"20px",fontSize:"0.88rem",fontWeight:500
+                                                }}>💊 {med}</span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Quick Reorder button */}
+                                {quickOrderSuccess ? (
+                                    <div style={{
+                                        background:"rgba(16,185,129,0.2)",border:"1px solid #10b981",borderRadius:"12px",
+                                        padding:"18px",textAlign:"center",color:"#6ee7b7",fontWeight:700,fontSize:"1rem"
+                                    }}>
+                                        ✅ Order placed in queue! Check the <a href="#queue" style={{color:"#34d399",textDecoration:"underline"}}>Live Queue</a> section.
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={handleQuickReorder}
+                                        disabled={!profile.medicines.length || !profile.address}
+                                        style={{
+                                            width:"100%",padding:"16px",borderRadius:"12px",border:"none",
+                                            background: (profile.medicines.length && profile.address)
+                                                ? "linear-gradient(135deg,#8b5cf6,#6d28d9)"
+                                                : "#334155",
+                                            color: (profile.medicines.length && profile.address) ? "#fff" : "#64748b",
+                                            fontWeight:800,fontSize:"1.1rem",cursor: (profile.medicines.length && profile.address)?"pointer":"not-allowed",
+                                            display:"flex",alignItems:"center",justifyContent:"center",gap:"10px",
+                                            transition:"all 0.2s",boxShadow: (profile.medicines.length && profile.address)?"0 4px 20px rgba(139,92,246,0.4)":`none`
+                                        }}
+                                        id="quick-reorder-btn"
+                                    >
+                                        ⚡ Quick Reorder My Medicines
+                                        {(!profile.medicines.length || !profile.address) && <span style={{fontSize:"0.75rem",fontWeight:400}}>(Save address & medicines first)</span>}
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
