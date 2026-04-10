@@ -189,6 +189,14 @@ const FamilyOrderForm = ({ onCancel, onSubmit }) => {
     );
 };
 
+// ─── Shared helpers ──────────────────────────────────────────────
+const TYPE_META = {
+    emergency:    { label: "Emergency Order",  icon: "🚨", color: "#dc2626" },
+    family:       { label: "Family Care",       icon: "❤️", color: "#10b981" },
+    prescription: { label: "Prescription",      icon: "📝", color: "#8b5cf6" },
+};
+const STATUS_OPTIONS = ["In Queue","Processing","Dispatched","On Hold"];
+
 // ─── Main App ─────────────────────────────────────────────────────
 const App = () => {
     const [scrolled, setScrolled] = useState(false);
@@ -197,6 +205,14 @@ const App = () => {
     const [modalStep, setModalStep] = useState(1);
     const [queueNum, setQueueNum] = useState("");
     const [orderPriority, setOrderPriority] = useState("Normal");
+    // ── Global Queue ──
+    const [globalQueue, setGlobalQueue] = useState([]);
+    // ── Admin Panel ──
+    const [adminOpen, setAdminOpen] = useState(false);
+    const [adminLoggedIn, setAdminLoggedIn] = useState(false);
+    const [adminPwInput, setAdminPwInput] = useState("");
+    const [adminPwError, setAdminPwError] = useState(false);
+    // ── Emergency alert ──
     const [isEmergencyAlertActive, setIsEmergencyAlertActive] = useState(false);
     const [emergencyStatus, setEmergencyStatus] = useState("");
     const [showDismiss, setShowDismiss] = useState(false);
@@ -229,12 +245,31 @@ const App = () => {
     const closeModal = () => { setActiveModal(null); setModalStep(1); };
 
     const submitToQueue = () => {
-        // Generate a unique queue number
         const prefix = "MQ";
         const num = Math.floor(10000 + Math.random() * 90000);
-        setQueueNum(`${prefix}-${num}`);
+        const id = `${prefix}-${num}`;
+        const entry = {
+            id,
+            type: activeModal,
+            priority: "Normal",
+            status: "In Queue",
+            placedAt: new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}),
+        };
+        setGlobalQueue(prev => [entry, ...prev]);
+        setQueueNum(id);
         setOrderPriority("Normal");
         setModalStep(2);
+    };
+
+    // Queue helpers used by both User view and Admin panel
+    const cancelOrder  = (id) => setGlobalQueue(prev => prev.filter(o => o.id !== id));
+    const updateQueuePriority = (id, p) => setGlobalQueue(prev => prev.map(o => o.id===id ? {...o, priority:p} : o));
+    const updateQueueStatus   = (id, s) => setGlobalQueue(prev => prev.map(o => o.id===id ? {...o, status:s}   : o));
+
+    // Admin login
+    const handleAdminLogin = () => {
+        if(adminPwInput === 'medigo@admin') { setAdminLoggedIn(true); setAdminPwError(false); }
+        else { setAdminPwError(true); }
     };
 
     const fetchLocationData = async () => {
@@ -500,9 +535,11 @@ const App = () => {
                     <ul>
                         <li><a href="#home" onClick={()=>setMenuOpen(false)}>Home</a></li>
                         <li><a href="#track" onClick={()=>setMenuOpen(false)}>Track Package</a></li>
+                        <li><a href="#queue" onClick={()=>setMenuOpen(false)}>My Queue</a></li>
                         <li><a href="#services" onClick={()=>setMenuOpen(false)}>Services</a></li>
                         <li><a href="#patient-portal" onClick={()=>setMenuOpen(false)}>Patient Portal</a></li>
                         <li><a href="#contact" onClick={()=>setMenuOpen(false)}>Contact</a></li>
+                        <li><a href="#admin" onClick={()=>{setMenuOpen(false);setAdminOpen(true);}} style={{color:"#dc2626",fontWeight:700}}>⚙️ Admin</a></li>
                     </ul>
                 </nav>
                 <button className="mobile-menu-btn" onClick={()=>setMenuOpen(o=>!o)} aria-label="Toggle menu">
@@ -566,6 +603,59 @@ const App = () => {
             </div>
         </section>
 
+        {/* ── USER QUEUE SECTION ── */}
+        <section id="queue" style={{padding:"60px 0",background:"#f8fafc"}}>
+            <div className="container">
+                <div className="section-title">
+                    <h2>📋 Live Order Queue</h2>
+                    <p>View all active orders. You can cancel any order you placed by mistake.</p>
+                </div>
+                {globalQueue.length === 0 ? (
+                    <div style={{textAlign:"center",padding:"50px 20px",color:"#94a3b8"}}>
+                        <div style={{fontSize:"3rem",marginBottom:"12px"}}>📭</div>
+                        <p style={{fontSize:"1.1rem",fontWeight:600}}>No orders in the queue right now.</p>
+                        <p style={{fontSize:"0.9rem"}}>Place an Emergency, Family, or Prescription order above to see it here.</p>
+                    </div>
+                ) : (
+                    <div style={{display:"grid",gap:"16px"}}>
+                        {globalQueue.map(order => {
+                            const meta = TYPE_META[order.type] || TYPE_META.emergency;
+                            const pLvl = PRIORITY_LEVELS.find(p=>p.label===order.priority)||PRIORITY_LEVELS[1];
+                            const statusColor = order.status==="In Queue"?"#92400e":order.status==="Processing"?"#1d4ed8":order.status==="Dispatched"?"#065f46":"#6b7280";
+                            const statusBg    = order.status==="In Queue"?"#fef3c7":order.status==="Processing"?"#dbeafe":order.status==="Dispatched"?"#d1fae5":"#f1f5f9";
+                            return (
+                                <div key={order.id} style={{
+                                    background:"#fff",borderRadius:"14px",padding:"20px 24px",
+                                    border:"1px solid #e2e8f0",display:"flex",alignItems:"center",
+                                    gap:"20px",flexWrap:"wrap",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"
+                                }}>
+                                    <div style={{fontSize:"2rem"}}>{meta.icon}</div>
+                                    <div style={{flex:1,minWidth:"180px"}}>
+                                        <div style={{fontWeight:800,fontSize:"1rem",color:"#1e293b"}}>{meta.label}</div>
+                                        <div style={{fontFamily:"monospace",fontWeight:700,color:"#2563eb",fontSize:"0.9rem"}}>{order.id}</div>
+                                        <div style={{color:"#94a3b8",fontSize:"0.8rem",marginTop:"2px"}}>Placed at {order.placedAt}</div>
+                                    </div>
+                                    <div style={{display:"flex",gap:"10px",alignItems:"center",flexWrap:"wrap"}}>
+                                        <span style={{background:statusBg,color:statusColor,fontWeight:700,padding:"4px 14px",borderRadius:"20px",fontSize:"0.82rem"}}>{order.status}</span>
+                                        <span style={{background:pLvl.bg,color:pLvl.color,fontWeight:700,padding:"4px 14px",borderRadius:"20px",fontSize:"0.82rem"}}>{pLvl.icon} {pLvl.label}</span>
+                                    </div>
+                                    <button onClick={()=>cancelOrder(order.id)} style={{
+                                        padding:"8px 20px",borderRadius:"8px",border:"2px solid #dc2626",
+                                        background:"#fff",color:"#dc2626",fontWeight:700,cursor:"pointer",
+                                        fontSize:"0.88rem",transition:"all 0.2s",whiteSpace:"nowrap"
+                                    }}
+                                    onMouseEnter={e=>{e.currentTarget.style.background='#fef2f2';}}
+                                    onMouseLeave={e=>{e.currentTarget.style.background='#fff';}}>
+                                        ✕ Cancel Order
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+        </section>
+
         {/* ── SERVICES ── */}
         <section id="services" className="services-section">
             <div className="container">
@@ -624,6 +714,116 @@ const App = () => {
                         </ul>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        {/* ── ADMIN PANEL ── */}
+        <section id="admin" style={{padding:"60px 0",background:"#0f172a"}}>
+            <div className="container">
+                <div className="section-title" style={{color:"#f1f5f9"}}>
+                    <h2 style={{color:"#f8fafc"}}>⚙️ Admin Panel</h2>
+                    <p style={{color:"#94a3b8"}}>Manage the live order queue — change priorities, update status, or remove orders.</p>
+                </div>
+                {!adminLoggedIn ? (
+                    <div style={{maxWidth:"380px",margin:"0 auto",background:"#1e293b",borderRadius:"16px",padding:"32px",textAlign:"center"}}>
+                        <div style={{fontSize:"2.5rem",marginBottom:"12px"}}>🔐</div>
+                        <h3 style={{color:"#f1f5f9",marginBottom:"6px"}}>Admin Login</h3>
+                        <p style={{color:"#94a3b8",fontSize:"0.88rem",marginBottom:"20px"}}>Enter the admin password to manage the queue.</p>
+                        <input
+                            type="password"
+                            placeholder="Admin Password"
+                            value={adminPwInput}
+                            onChange={e=>setAdminPwInput(e.target.value)}
+                            onKeyDown={e=>e.key==='Enter'&&handleAdminLogin()}
+                            style={{
+                                width:"100%",padding:"12px 16px",borderRadius:"10px",border:`2px solid ${adminPwError?'#dc2626':'#334155'}`,
+                                background:"#0f172a",color:"#f1f5f9",fontSize:"1rem",marginBottom:"14px",outline:"none",boxSizing:"border-box"
+                            }}
+                        />
+                        {adminPwError && <p style={{color:"#f87171",fontSize:"0.85rem",marginBottom:"12px"}}>❌ Incorrect password. Try again.</p>}
+                        <button onClick={handleAdminLogin} style={{
+                            width:"100%",padding:"12px",borderRadius:"10px",border:"none",
+                            background:"linear-gradient(135deg,#2563eb,#1d4ed8)",color:"#fff",
+                            fontWeight:700,fontSize:"1rem",cursor:"pointer"
+                        }}>Login</button>
+                    </div>
+                ) : (
+                    <div>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"24px",flexWrap:"wrap",gap:"12px"}}>
+                            <div style={{color:"#94a3b8",fontSize:"0.9rem"}}>
+                                ✅ Logged in as Admin &nbsp;|&nbsp; <span style={{color:"#60a5fa"}}>{globalQueue.length} order(s) in queue</span>
+                            </div>
+                            <button onClick={()=>{setAdminLoggedIn(false);setAdminPwInput('');}} style={{
+                                padding:"6px 18px",borderRadius:"8px",border:"1px solid #475569",background:"transparent",color:"#94a3b8",cursor:"pointer",fontSize:"0.85rem"
+                            }}>Logout</button>
+                        </div>
+                        {globalQueue.length === 0 ? (
+                            <div style={{textAlign:"center",padding:"40px",color:"#475569"}}>
+                                <div style={{fontSize:"2.5rem",marginBottom:"10px"}}>📭</div>
+                                <p style={{color:"#64748b"}}>Queue is empty. No orders to manage.</p>
+                            </div>
+                        ) : (
+                            <div style={{display:"grid",gap:"14px"}}>
+                                {globalQueue.map(order => {
+                                    const meta = TYPE_META[order.type] || TYPE_META.emergency;
+                                    const pLvl = PRIORITY_LEVELS.find(p=>p.label===order.priority)||PRIORITY_LEVELS[1];
+                                    return (
+                                        <div key={order.id} style={{
+                                            background:"#1e293b",borderRadius:"14px",padding:"20px 24px",
+                                            border:"1px solid #334155",display:"flex",alignItems:"center",
+                                            gap:"20px",flexWrap:"wrap"
+                                        }}>
+                                            <div style={{fontSize:"1.8rem"}}>{meta.icon}</div>
+                                            <div style={{flex:1,minWidth:"180px"}}>
+                                                <div style={{fontWeight:800,color:"#f1f5f9"}}>{meta.label}</div>
+                                                <div style={{fontFamily:"monospace",color:"#60a5fa",fontWeight:700,fontSize:"0.9rem"}}>{order.id}</div>
+                                                <div style={{color:"#64748b",fontSize:"0.78rem"}}>Placed at {order.placedAt}</div>
+                                            </div>
+                                            {/* Priority selector */}
+                                            <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
+                                                <label style={{color:"#94a3b8",fontSize:"0.75rem",fontWeight:600}}>PRIORITY</label>
+                                                <select
+                                                    value={order.priority}
+                                                    onChange={e=>updateQueuePriority(order.id,e.target.value)}
+                                                    style={{
+                                                        padding:"6px 10px",borderRadius:"8px",border:`1px solid ${pLvl.color}`,
+                                                        background:"#0f172a",color:pLvl.color,fontWeight:700,cursor:"pointer",fontSize:"0.85rem"
+                                                    }}
+                                                >
+                                                    {PRIORITY_LEVELS.map(p=>(<option key={p.label} value={p.label}>{p.icon} {p.label}</option>))}
+                                                </select>
+                                            </div>
+                                            {/* Status selector */}
+                                            <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
+                                                <label style={{color:"#94a3b8",fontSize:"0.75rem",fontWeight:600}}>STATUS</label>
+                                                <select
+                                                    value={order.status}
+                                                    onChange={e=>updateQueueStatus(order.id,e.target.value)}
+                                                    style={{
+                                                        padding:"6px 10px",borderRadius:"8px",border:"1px solid #475569",
+                                                        background:"#0f172a",color:"#e2e8f0",fontWeight:600,cursor:"pointer",fontSize:"0.85rem"
+                                                    }}
+                                                >
+                                                    {STATUS_OPTIONS.map(s=>(<option key={s} value={s}>{s}</option>))}
+                                                </select>
+                                            </div>
+                                            {/* Delete */}
+                                            <button onClick={()=>cancelOrder(order.id)} style={{
+                                                padding:"10px 18px",borderRadius:"8px",border:"none",
+                                                background:"#7f1d1d",color:"#fca5a5",fontWeight:700,
+                                                cursor:"pointer",fontSize:"0.85rem",transition:"background 0.2s"
+                                            }}
+                                            onMouseEnter={e=>e.currentTarget.style.background='#991b1b'}
+                                            onMouseLeave={e=>e.currentTarget.style.background='#7f1d1d'}>
+                                                🗑 Delete
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </section>
 
