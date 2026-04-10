@@ -1,23 +1,88 @@
 const { useState, useEffect, useRef } = React;
 
-// ─── Shared Live Tracker ─────────────────────────────────────────
-const TrackingView = ({ tracker, onClose }) => (
-    <div>
-        <h2 style={{color:"green"}}>Dispatched Successfully!</h2>
-        <p>Your courier is en route.</p>
-        <div className="mock-map-container">
-            <div className="mock-vehicle" style={{left:`${tracker.progress}%`}}>{tracker.vehicleIcon}</div>
-            <div className="mock-route"></div>
-            <div className="mock-marker start">🏥</div>
-            <div className="mock-marker end">🔬</div>
+// ─── Priority levels config ──────────────────────────────────────
+const PRIORITY_LEVELS = [
+    { label: "Low",      color: "#64748b", bg: "#f1f5f9", icon: "🟡" },
+    { label: "Normal",   color: "#2563eb", bg: "#eff6ff", icon: "🔵" },
+    { label: "High",     color: "#d97706", bg: "#fffbeb", icon: "🟠" },
+    { label: "Critical", color: "#dc2626", bg: "#fef2f2", icon: "🔴" },
+];
+
+// ─── Queue Status View ────────────────────────────────────────────
+const QueueView = ({ queueNum, priority, onPriorityChange, onClose }) => {
+    const current = PRIORITY_LEVELS.find(p => p.label === priority) || PRIORITY_LEVELS[1];
+    const [showPicker, setShowPicker] = React.useState(false);
+    return (
+        <div>
+            <div style={{textAlign:"center",marginBottom:"18px"}}>
+                <div style={{fontSize:"3rem",marginBottom:"8px"}}>📋</div>
+                <h2 style={{color:"#2563eb",margin:0}}>Order Queued!</h2>
+                <p style={{color:"#64748b",marginTop:"6px"}}>Your request has been placed in the processing queue.</p>
+            </div>
+
+            {/* Queue card */}
+            <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:"14px",padding:"18px",marginBottom:"18px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}>
+                    <span style={{fontWeight:700,color:"#1e293b"}}>Queue Number</span>
+                    <span style={{fontFamily:"monospace",fontWeight:800,fontSize:"1.1rem",color:"#2563eb",background:"#dbeafe",padding:"4px 12px",borderRadius:"8px"}}>{queueNum}</span>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}>
+                    <span style={{fontWeight:700,color:"#1e293b"}}>Status</span>
+                    <span style={{background:"#fef3c7",color:"#92400e",fontWeight:700,padding:"4px 14px",borderRadius:"20px",fontSize:"0.85rem"}}>⏳ In Queue</span>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontWeight:700,color:"#1e293b"}}>Priority</span>
+                    <span style={{background:current.bg,color:current.color,fontWeight:700,padding:"4px 14px",borderRadius:"20px",fontSize:"0.85rem"}}>
+                        {current.icon} {current.label}
+                    </span>
+                </div>
+            </div>
+
+            {/* Priority assignment button */}
+            <div style={{position:"relative",marginBottom:"14px"}}>
+                <button
+                    id="assign-priority-btn"
+                    onClick={() => setShowPicker(p => !p)}
+                    style={{
+                        width:"100%",padding:"12px",borderRadius:"10px",border:`2px solid ${current.color}`,
+                        background:current.bg,color:current.color,fontWeight:700,fontSize:"0.95rem",
+                        cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"8px",
+                        transition:"all 0.2s"
+                    }}
+                >
+                    🎯 Assign Priority Level {showPicker ? "▲" : "▼"}
+                </button>
+                {showPicker && (
+                    <div style={{
+                        position:"absolute",bottom:"calc(100% + 6px)",left:0,right:0,
+                        background:"#fff",border:"1px solid #e2e8f0",borderRadius:"12px",
+                        boxShadow:"0 8px 24px rgba(0,0,0,0.12)",overflow:"hidden",zIndex:10
+                    }}>
+                        {PRIORITY_LEVELS.map(lvl => (
+                            <button
+                                key={lvl.label}
+                                id={`priority-${lvl.label.toLowerCase()}`}
+                                onClick={() => { onPriorityChange(lvl.label); setShowPicker(false); }}
+                                style={{
+                                    width:"100%",padding:"12px 18px",border:"none",background: priority===lvl.label ? lvl.bg : "#fff",
+                                    color:lvl.color,fontWeight: priority===lvl.label ? 800 : 600,
+                                    fontSize:"0.9rem",cursor:"pointer",textAlign:"left",
+                                    display:"flex",alignItems:"center",gap:"10px",transition:"background 0.15s"
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = lvl.bg}
+                                onMouseLeave={e => e.currentTarget.style.background = priority===lvl.label ? lvl.bg : "#fff"}
+                            >
+                                {lvl.icon} {lvl.label} {priority===lvl.label && "✓"}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <button onClick={onClose} className="btn btn-secondary" style={{width:"100%"}}>Close</button>
         </div>
-        <div className="live-status-box">
-            <strong>Status:</strong> <span style={{color:"var(--primary-blue)"}}>{tracker.status}</span><br/>
-            <strong>ETA:</strong> <span>{tracker.eta}</span>
-        </div>
-        <button onClick={onClose} className="btn btn-secondary" style={{marginTop:"20px",width:"100%"}}>Close Tracker</button>
-    </div>
-);
+    );
+};
 
 // ─── Prescription Upload Form ─────────────────────────────────────
 const RxOrderForm = ({ onCancel, onSubmit }) => {
@@ -130,7 +195,8 @@ const App = () => {
     const [menuOpen, setMenuOpen] = useState(false);
     const [activeModal, setActiveModal] = useState(null);
     const [modalStep, setModalStep] = useState(1);
-    const [tracker, setTracker] = useState({ progress:10, status:"", eta:"", vehicleIcon:"🚁" });
+    const [queueNum, setQueueNum] = useState("");
+    const [orderPriority, setOrderPriority] = useState("Normal");
     const [isEmergencyAlertActive, setIsEmergencyAlertActive] = useState(false);
     const [emergencyStatus, setEmergencyStatus] = useState("");
     const [showDismiss, setShowDismiss] = useState(false);
@@ -147,7 +213,6 @@ const App = () => {
     const [newPillName, setNewPillName] = useState("");
     const [newPillTime, setNewPillTime] = useState("");
     const chatBodyRef = useRef(null);
-    const trackerIntervalRef = useRef(null);
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 20);
@@ -160,24 +225,16 @@ const App = () => {
         if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
     }, [chatMessages]);
 
-    const openModal = (name) => { setActiveModal(name); setModalStep(1); };
-    const closeModal = () => { setActiveModal(null); setModalStep(1); if(trackerIntervalRef.current) clearInterval(trackerIntervalRef.current); };
+    const openModal = (name) => { setActiveModal(name); setModalStep(1); setOrderPriority("Normal"); };
+    const closeModal = () => { setActiveModal(null); setModalStep(1); };
 
-    const runSimulation = (cfg) => {
+    const submitToQueue = () => {
+        // Generate a unique queue number
+        const prefix = "MQ";
+        const num = Math.floor(10000 + Math.random() * 90000);
+        setQueueNum(`${prefix}-${num}`);
+        setOrderPriority("Normal");
         setModalStep(2);
-        setTracker({ progress:10, status:cfg.initStatus, eta:cfg.initEta, vehicleIcon:cfg.initIcon });
-        let p = 10;
-        trackerIntervalRef.current = setInterval(() => {
-            p += 5;
-            setTracker(prev => {
-                let t = { ...prev, progress: p };
-                if(p === 30)   { t.status = cfg.s30; t.eta = cfg.e30; t.vehicleIcon = cfg.i30 || prev.vehicleIcon; }
-                else if(p===50){ t.status = cfg.s50; t.eta = cfg.e50; }
-                else if(p===70){ t.status = cfg.s70; t.eta = cfg.e70; }
-                else if(p>=90) { t.status = cfg.s90; t.eta = "0 Mins"; t.progress = 90; clearInterval(trackerIntervalRef.current); }
-                return t;
-            });
-        }, 1000);
     };
 
     const fetchLocationData = async () => {
@@ -219,7 +276,7 @@ const App = () => {
         await reportEmergency({ gps, ip, type: "Hospital Alert" });
 
         setTimeout(() => {
-            const hospitals = ["Mercy General Hospital","City Health Center","Metro Medical Institute","Saint Luke's ER"];
+            const hospitals = ["AIIMS New Delhi","Apollo Hospitals Chennai","Fortis Memorial Research Institute","Kokilaben Dhirubhai Ambani Hospital","Max Super Speciality Hospital","Manipal Hospitals Bengaluru"];
             const h = hospitals[Math.floor(Math.random()*hospitals.length)];
             setEmergencyStatus(`✅ Alert Received! ${h} has been notified and will contact dispatch immediately.\n\nData pushed to secure emergency log.`);
             setShowDismiss(true);
@@ -250,10 +307,10 @@ const App = () => {
 
     const chatKnowledge = [
         {
-            keys: ['hello','hi','hey','good morning','good evening','howdy','sup'],
+            keys: ['hello','hi','hey','good morning','good evening','howdy','sup','namaste'],
             replies: [
-                "👋 Hello! Welcome to Medigo — your trusted medical courier service. How can I assist you today?",
-                "Hi there! 😊 I'm Medigo's support assistant. Ask me anything about tracking, orders, prescriptions, or services!",
+                "👋 Namaste! Welcome to Medigo — India's most trusted medical courier service. How can I assist you today?",
+                "नमस्ते! 😊 I'm Medigo's support assistant. Ask me anything about tracking, orders, prescriptions, or services!",
                 "Hey! Great to have you here. What can I help you with — tracking a package, placing an order, or something else?"
             ],
             followUps: ['Track my order','Post a prescription','Emergency order','Our services']
@@ -262,127 +319,127 @@ const App = () => {
             keys: ['track','tracking','where is','locate','status','shipment','parcel','package','delivery status'],
             replies: [
                 "📦 To track your parcel, scroll up to the **Track Your Medical Parcel** box on the homepage and enter your **8–10 character tracking number** (e.g. MP12345678). Results appear in seconds!",
-                "🔍 Your tracking number was sent via SMS/email when your order was dispatched. Enter it in the tracking box at the top of the page. Need help finding your number? Call 110-486-309.",
+                "🔍 Your tracking number was sent via SMS/email when your order was dispatched. Enter it in the tracking box at the top of the page. Need help? Call **+91 98765 43210**.",
                 "📍 Live tracking is available 24/7. Use the tracking section on the homepage — just type your number like **MP12345678** and hit Track. Status updates every few minutes."
             ],
             followUps: ['Track number format','Parcel delayed?','Contact support']
         },
         {
-            keys: ['prescription','rx','upload prescription','doctor note','medicine order','post prescription'],
+            keys: ['prescription','rx','upload prescription','doctor note','medicine order','post prescription','parchee','dawai'],
             replies: [
                 "💊 You can upload a prescription easily! Click the **📝 Post Prescription** button on the homepage. You can drag & drop a photo or PDF, then select any over-the-counter items you need alongside it.",
-                "📋 To post your Rx: tap **Post Prescription** → drag & drop your prescription image or PDF → add any OTC items → enter your address → hit Process Order. It's that simple!",
-                "🩺 We accept prescription photos (JPEG, PNG) and PDFs. Once uploaded via the Post Prescription button, our pharmacist team verifies it within 30 minutes before dispatch."
+                "📋 To post your Rx: tap **Post Prescription** → drag & drop your prescription image or PDF → add any OTC items → enter your address → hit Process Order. Bahut aasaan hai!",
+                "🩺 We accept prescription photos (JPEG, PNG) and PDFs. Once uploaded, our pharmacist team verifies it within 30 minutes before dispatch — across all major Indian cities."
             ],
             followUps: ['What formats are accepted?','How long until delivery?','OTC items available']
         },
         {
-            keys: ['emergency','urgent','critical','sos','hospital alert','911','life threatening'],
+            keys: ['emergency','urgent','critical','sos','hospital alert','112','ambulance','life threatening'],
             replies: [
-                "🚨 For a medical emergency, use the red **HOSPITAL ALERT** button (bottom-right of the page) immediately. It will ping the nearest hospital and dispatch a courier. For life-threatening emergencies, also dial **911**.",
+                "🚨 For a medical emergency, use the red **HOSPITAL ALERT** button (bottom-right of the page) immediately. It will ping the nearest hospital — AIIMS, Apollo, Fortis, or Max. For life-threatening emergencies, also dial **112**.",
                 "⚡ Emergency orders are dispatched within **minutes**. Click the **🚨 Emergency Order** button on the homepage, fill in pickup & destination details, and we'll mobilize instantly.",
-                "🏥 We handle critical organ transport, blood samples, and emergency medications. Tap **Emergency Order** now — our dispatch team is on standby 24/7."
+                "🏥 We handle critical organ transport, blood samples, and emergency medications for top Indian hospitals like AIIMS, Apollo, Manipal & Kokilaben. Our dispatch team is on standby 24/7."
             ],
             followUps: ['Emergency order details','Call dispatch team','Hospital coverage area']
         },
         {
-            keys: ['family','loved one','relative','send to','remote','care package','parents','grandparents'],
+            keys: ['family','loved one','relative','send to','remote','care package','parents','grandparents','maa','papa','ghar'],
             replies: [
-                "❤️ Use the **Order for Family** button to send medical supplies to loved ones anywhere. Enter their name, address, and choose immediate dispatch or schedule a future delivery date.",
-                "🏠 Our Family Care service lets you remotely send prescription refills, medical equipment, or daily supplies to a relative. Just click **Order for Family** and fill in the details!",
-                "📬 Yes! We deliver to addresses nationwide. Use the Family Order feature to schedule recurring refills or a one-time care package for your loved ones."
+                "❤️ Use the **Order for Family** button to send medical supplies to loved ones anywhere in India. Enter their name, address, and choose immediate dispatch or schedule a future delivery date.",
+                "🏠 Our Family Care service lets you remotely send prescription refills, medical equipment, or daily supplies to a relative — be it Delhi, Mumbai, Kolkata or a small town!",
+                "📬 Yes! We deliver across India. Use the Family Order feature to schedule recurring refills or a one-time care package for your loved ones at home."
             ],
             followUps: ['Scheduling a delivery','Recurring orders','Delivery areas']
         },
         {
-            keys: ['price','cost','fee','charge','rate','quote','how much','billing','payment'],
+            keys: ['price','cost','fee','charge','rate','quote','how much','billing','payment','kitna','rupee','inr'],
             replies: [
-                "💰 Pricing is tailored based on **distance**, **urgency**, and **package type** (e.g., refrigerated items cost more). Contact us at 110-486-309 for an instant quote — it usually takes under 2 minutes!",
-                "📊 We offer tiered pricing: Standard (3–5 hrs), Express (1–2 hrs), and Emergency (<30 min). Exact costs vary. Call 110-486-309 or email Medigotrack@gmail.com for a quote.",
-                "🏷️ Our rates are competitive and transparent with no hidden fees. For prescription deliveries, insurance co-pays may apply. Get a free quote by calling 110-486-309."
+                "💰 Pricing is tailored based on **distance**, **urgency**, and **package type** (e.g., cold-chain items cost more). Call **+91 98765 43210** for an instant quote — usually under 2 minutes!",
+                "📊 We offer tiered pricing in INR (₹): Standard (3–5 hrs), Express (1–2 hrs), and Emergency (<30 min). Exact costs vary by city. Call +91 98765 43210 or email Medigotrack@gmail.com.",
+                "🏷️ Our rates are competitive and transparent with no hidden charges. We accept UPI, Net Banking, Cards, and Cash. Get a free quote by calling **+91 98765 43210**."
             ],
-            followUps: ['Insurance coverage','Payment methods','Get a quote']
+            followUps: ['UPI payment','Insurance coverage','Get a quote']
         },
         {
-            keys: ['time','how long','eta','when','duration','fast','speed','quick','slow','delayed','delay'],
+            keys: ['time','how long','eta','when','duration','fast','speed','quick','slow','delayed','delay','kitni der'],
             replies: [
-                "⏱️ Delivery times: **Emergency** orders arrive in 15–30 min, **Express** in 1–2 hours, **Standard** in 3–5 hours. Real-time ETAs are shown on the live tracking map after dispatch.",
-                "🚀 Our Emergency Drone dispatch averages **18 minutes** to pickup. Standard courier takes 3–5 hours. Track your exact ETA live once your order is placed!",
-                "📅 If your shipment is delayed beyond the estimated window, please call 110-486-309 immediately. We have a delay guarantee — if we're late, you get a priority re-dispatch."
+                "⏱️ Delivery times: **Emergency** orders arrive in 15–30 min, **Express** in 1–2 hours, **Standard** in 3–5 hours. Real-time ETAs shown after your order is placed.",
+                "🚀 Our Emergency dispatch averages **18 minutes** across metros like Mumbai, Delhi, Bengaluru & Chennai. Standard courier takes 3–5 hours. Track your ETA live!",
+                "📅 If your shipment is delayed beyond the estimated window, call **+91 98765 43210** immediately. We have a delay guarantee — if we're late, you get a priority re-dispatch at no extra cost."
             ],
             followUps: ['Track live ETA','Report a delay','Express options']
         },
         {
             keys: ['service','what do you','offer','provide','speciali','lab','specimen','blood','organ','equipment','pharmacy'],
             replies: [
-                "🏥 We specialize in: **Lab Specimens** (blood, tissue, biopsies), **Pharmacy Deliveries** (prescription & OTC), and **Medical Equipment** (devices, surgical tools). All under strict HIPAA & cold-chain protocols.",
-                "🔬 Our core services: \n• Lab specimen courier (temperature-controlled) \n• Prescription & OTC pharmacy delivery \n• Medical device & equipment logistics \n• Emergency organ transport \n• Family care packages",
-                "💼 Medigo handles B2B hospital logistics, direct-to-patient pharmacy delivery, and on-demand emergency medical courier. Scroll down to **Our Specialized Services** for full details!"
+                "🏥 We specialize in: **Lab Specimens** (blood, tissue, biopsies), **Pharmacy Deliveries** (prescription & OTC), and **Medical Equipment** — all under strict Indian Medical Council & cold-chain protocols.",
+                "🔬 Our core services: \n• Lab specimen courier (temperature-controlled) \n• Prescription & OTC pharmacy delivery \n• Medical device & equipment logistics \n• Emergency organ transport \n• Family care packages across India",
+                "💼 Medigo partners with 500+ hospitals and clinics across India including AIIMS, Apollo, Fortis, Manipal, Narayana Health & more. Scroll down to **Our Specialized Services** for details!"
             ],
-            followUps: ['Cold-chain transport','HIPAA compliance','Book a service']
+            followUps: ['Cold-chain transport','CDSCO compliance','Book a service']
         },
         {
-            keys: ['hipaa','compliance','secure','privacy','data','confidential','regulation','fda'],
+            keys: ['compliance','secure','privacy','data','confidential','regulation','cdsco','mci','government'],
             replies: [
-                "🔒 We are fully **HIPAA compliant**. All patient data, prescription information, and medical records shared with us are encrypted and handled under strict privacy protocols.",
-                "✅ Medigo operates under HIPAA, OSHA, and FDA transport guidelines. Our couriers are certified for handling sensitive biological and pharmaceutical materials.",
-                "🛡️ Your privacy is our priority. We never share patient data with third parties. All delivery manifests are encrypted and auto-deleted after 90 days per regulatory requirements."
+                "🔒 We comply with **CDSCO regulations**, Indian Medical Council guidelines, and IT Act data privacy requirements. All patient data is encrypted end-to-end.",
+                "✅ Medigo operates under CDSCO, MCI, and Indian Pharmacy Council guidelines. Our couriers are certified for handling sensitive biological and pharmaceutical materials.",
+                "🛡️ Your privacy is our priority. We follow India's **Personal Data Protection** standards. Delivery manifests are encrypted and auto-deleted after 90 days."
             ],
             followUps: ['Data security','Courier certification','Compliance docs']
         },
         {
-            keys: ['contact','phone','email','reach','call','support','help','agent','human','operator'],
+            keys: ['contact','phone','email','reach','call','support','help','agent','human','operator','helpline'],
             replies: [
-                "📞 Reach our team 24/7:\n• **Phone:** 110-486-309\n• **Email:** Medigotrack@gmail.com\n• **Address:** 123 Healthway Blvd, Suite 400, Metropolis, NY 10001",
-                "💬 You can contact us via phone at **110-486-309** for immediate assistance, or email **Medigotrack@gmail.com** for non-urgent inquiries. Average response time is under 3 minutes!",
-                "🧑‍💼 To speak with a live agent, call **110-486-309** — we're available 24/7/365. For prescription queries, ask for our pharmacy coordination desk."
+                "📞 Reach our team 24/7:\n• **Phone:** +91 98765 43210\n• **Email:** Medigotrack@gmail.com\n• **Address:** 4th Floor, Bandra Kurla Complex, Mumbai, Maharashtra 400051",
+                "💬 Contact us via phone at **+91 98765 43210** for immediate assistance, or email **Medigotrack@gmail.com** for non-urgent inquiries. Average response time is under 3 minutes!",
+                "🧑‍💼 To speak with a live agent, call **+91 98765 43210** — available 24/7/365 across India. For prescription queries, ask for our pharmacy coordination desk."
             ],
             followUps: ['Operating hours','Email support','Office location']
         },
         {
             keys: ['hours','open','available','24','around the clock','when are','operation','operate'],
             replies: [
-                "🕐 Medigo operates **24 hours a day, 7 days a week, 365 days a year** — including holidays. Emergency dispatch is always available.",
-                "✅ We never close! Whether it's 3 AM on Christmas or a busy Monday morning, our dispatch team and couriers are ready to serve you.",
-                "🌙 Our 24/7 operations mean your medical supplies reach you on time — any time. Emergency orders are handled within minutes, even at midnight."
+                "🕐 Medigo operates **24 hours a day, 7 days a week, 365 days a year** — including Diwali, Holi and all Indian public holidays. Emergency dispatch is always available.",
+                "✅ We never close! Whether it's 3 AM or a busy festival morning, our dispatch team across India is ready to serve you.",
+                "🌙 Our 24/7 operations mean your medical supplies reach you on time — any time, anywhere in India. Emergency orders handled within minutes, even at midnight."
             ],
             followUps: ['Emergency availability','Holiday delivery','Book a time slot']
         },
         {
             keys: ['cancel','cancellation','change order','modify','update order','wrong address','mistake'],
             replies: [
-                "✏️ To cancel or modify an order, call us **immediately** at 110-486-309. Orders can be modified within **10 minutes** of placement before courier dispatch.",
-                "⚠️ Once a courier is dispatched, cancellation may incur a small fee. Contact us right away at 110-486-309 to minimize charges and arrange changes.",
-                "🔄 Address changes must be requested before the package leaves the facility. Call 110-486-309 with your tracking number ready for fastest resolution."
+                "✏️ To cancel or modify an order, call us **immediately** at +91 98765 43210. Orders can be modified within **10 minutes** of placement before courier dispatch.",
+                "⚠️ Once a courier is dispatched, cancellation may incur a small fee. Contact us right away at +91 98765 43210 to minimize charges and arrange changes.",
+                "🔄 Address changes must be requested before the package leaves the facility. Call +91 98765 43210 with your tracking number ready for fastest resolution."
             ],
             followUps: ['Track my order','Contact support','Refund policy']
         },
         {
-            keys: ['refund','money back','return','reimburse','charge dispute','overcharged'],
+            keys: ['refund','money back','return','reimburse','charge dispute','overcharged','paisa wapas'],
             replies: [
                 "💳 Refund requests are processed within **3–5 business days**. Email Medigotrack@gmail.com with your order ID and reason. We have a 100% satisfaction guarantee for failed deliveries.",
-                "🔁 If your delivery was lost, damaged, or significantly delayed beyond our SLA, you're eligible for a full refund or re-dispatch at no cost. Call 110-486-309 to initiate.",
-                "✅ We stand behind every delivery. If something went wrong, contact us within **48 hours** of the scheduled delivery for a full investigation and refund/re-delivery."
+                "🔁 If your delivery was lost, damaged, or significantly delayed beyond our SLA, you're eligible for a full refund or re-dispatch at no cost. Call +91 98765 43210 to initiate.",
+                "✅ We stand behind every delivery. If something went wrong, contact us within **48 hours** of the scheduled delivery for full investigation and refund/re-delivery. UPI refunds processed instantly."
             ],
             followUps: ['Contact support','Order status','Re-delivery options']
         },
         {
-            keys: ['pill','reminder','medication','medicine reminder','schedule','dose','alarm'],
+            keys: ['pill','reminder','medication','medicine reminder','schedule','dose','alarm','dawai','dawa'],
             replies: [
                 "💊 Use our **Pill Reminder** tool in the Patient Portal section below! Add your medication name and time, and we'll help you stay on schedule. It's free and built right into this portal.",
                 "⏰ Never miss a dose! Scroll to the **Patient Portal** section → find the Pill Reminder card → add your medication name and reminder time. Simple and effective!",
-                "🩺 The Pill Reminder in our Patient Portal lets you track all your scheduled medications. It's great for managing multiple prescriptions or helping an elderly family member."
+                "🩺 The Pill Reminder helps you track all scheduled medications — great for managing multiple prescriptions or helping elderly parents with their daily medicines."
             ],
             followUps: ['Set a reminder','Patient portal','Order medication']
         },
         {
-            keys: ['area','coverage','deliver to','location','city','state','region','nationwide','international'],
+            keys: ['area','coverage','deliver to','location','city','state','region','nationwide','pin code','district'],
             replies: [
-                "🗺️ We currently serve **all major metropolitan areas** across India, with expanding coverage in suburban regions. Call 110-486-309 to confirm delivery to your specific zip code.",
-                "📍 Medigo covers 50+ cities nationwide. Enter your delivery address in any order form — if we can't reach you directly, we'll connect you to a partner courier network.",
-                "🌎 We handle domestic deliveries across India. International medical logistics partnerships are available for select countries — contact us for details."
+                "🗺️ We serve **50+ cities** across India including Delhi, Mumbai, Bengaluru, Chennai, Kolkata, Hyderabad, Pune, Ahmedabad, Jaipur, Lucknow & more. Call +91 98765 43210 to check your PIN code.",
+                "📍 Medigo covers all major metros and Tier-2 cities in India. Enter your delivery address in any order form — if we can't reach you directly, we'll connect you to a partner courier network.",
+                "🌏 We deliver across India from Kashmir to Kanyakumari. International medical logistics partnerships are also available for NRIs — contact us for details."
             ],
-            followUps: ['Check my zip code','International inquiry','Partner network']
+            followUps: ['Check my PIN code','NRI inquiry','Partner network']
         }
     ];
 
@@ -433,28 +490,6 @@ const App = () => {
         }
     };
 
-    const emergencySimCfg = {
-        initStatus:"Courier Dispatched — En Route to Pickup", initEta:"15 Mins", initIcon:"🚚",
-        s30:"Package Secured at Pickup", e30:"10 Mins", i30:"🚚",
-        s50:"In Transit via Highway", e50:"7 Mins",
-        s70:"Approaching Destination", e70:"2 Mins",
-        s90:"Package Delivered Successfully! ✅"
-    };
-    const familySimCfg = {
-        initStatus:"Care Package Dispatched", initEta:"45 Mins", initIcon:"🚁",
-        s30:"Picked up from Pharmacy", e30:"30 Mins", i30:"🚐",
-        s50:"In Transit", e50:"15 Mins",
-        s70:"Arriving in Neighbourhood", e70:"3 Mins",
-        s90:"Care Package Delivered! ❤️"
-    };
-    const rxSimCfg = {
-        initStatus:"Prescription Processing — Preparing Order", initEta:"60 Mins", initIcon:"🚁",
-        s30:"Order Picked up from Pharmacy", e30:"45 Mins", i30:"🚐",
-        s50:"In Transit to Destination", e50:"20 Mins",
-        s70:"Approaching Delivery Address", e70:"5 Mins",
-        s90:"Order Delivered Successfully! 📝"
-    };
-
     return (
         <>
         {/* ── HEADER ── */}
@@ -480,13 +515,13 @@ const App = () => {
         <section id="home" className="hero-section">
             <div className="container hero-container">
                 <div className="hero-content">
-                    <h2>Secure, Compliant Medical Courier Services</h2>
-                    <p>Ensuring safe, timely, and temperature-controlled delivery for your critical medical packages, lab specimens, and equipment.</p>
+                    <h2>India's Most Trusted Medical Courier Service</h2>
+                    <p>Ensuring safe, timely, and temperature-controlled delivery of critical medical packages, lab specimens, and equipment — across 50+ Indian cities.</p>
                     <div className="cta-buttons"><a href="#services" className="btn btn-secondary">Learn More</a></div>
                 </div>
                 <div id="track" className="tracking-box">
                     <h3>Track Your Medical Parcel</h3>
-                    <p>Enter your tracking number to see live delivery status.</p>
+                    <p>Enter your tracking number to see live status.</p>
                     <form onSubmit={handleTrackSubmit}>
                         <div className="input-group">
                             <input type="text" placeholder="e.g. MP12345678" required value={trackNum} onChange={e=>setTrackNum(e.target.value)}/>
@@ -596,10 +631,11 @@ const App = () => {
         <footer id="contact" className="main-footer">
             <div className="container footer-container">
                 <div className="footer-info">
-                    <h3>Medigo Systems</h3>
-                    <p>123 Healthway Blvd, Suite 400<br/>Metropolis, NY 10001</p>
-                    <p>Phone: 110-486-309</p>
-                    <p>Email: Medigotrack@gmail.com</p>
+                    <h3>Medigo Systems India Pvt. Ltd.</h3>
+                    <p>4th Floor, Tower B, Bandra Kurla Complex<br/>Mumbai, Maharashtra 400051</p>
+                    <p>📞 +91 98765 43210</p>
+                    <p>📧 Medigotrack@gmail.com</p>
+                    <p style={{marginTop:"8px",fontSize:"0.8rem",opacity:0.8}}>CIN: U85100MH2024PTC000001</p>
                 </div>
                 <div className="footer-links">
                     <h4>Quick Links</h4>
@@ -611,7 +647,7 @@ const App = () => {
                     </ul>
                 </div>
             </div>
-            <div className="footer-bottom"><div className="container"><p>&copy; 2026 Medigo Systems. All rights reserved.</p></div></div>
+            <div className="footer-bottom"><div className="container"><p>&copy; 2026 Medigo Systems India Pvt. Ltd. All rights reserved. | Made with ❤️ in India</p></div></div>
         </footer>
 
         {/* ── HOSPITAL ALERT BUTTON ── */}
@@ -681,7 +717,7 @@ const App = () => {
                     <div>
                         <h2 style={{color:"var(--primary-blue)"}}>Request Emergency Dispatch</h2>
                         <p>Please enter details for immediate pickup and delivery.</p>
-                        <form style={{textAlign:"left",marginTop:"15px"}} onSubmit={(e)=>{e.preventDefault();runSimulation(emergencySimCfg);}}>
+                        <form style={{textAlign:"left",marginTop:"15px"}} onSubmit={(e)=>{e.preventDefault();submitToQueue();}}>
                             <div style={{marginBottom:"15px"}}><label style={{display:"block",marginBottom:"6px",fontWeight:600}}>Pickup Location</label><input type="text" className="modal-input" required placeholder="e.g. City Hospital ER"/></div>
                             <div style={{marginBottom:"15px"}}><label style={{display:"block",marginBottom:"6px",fontWeight:600}}>Destination</label><input type="text" className="modal-input" required placeholder="e.g. State Research Lab"/></div>
                             <div style={{marginBottom:"20px"}}>
@@ -695,12 +731,12 @@ const App = () => {
                                 </select>
                             </div>
                             <div style={{display:"flex",gap:"10px"}}>
-                                <button type="submit" className="btn btn-primary" style={{flex:2,backgroundColor:"var(--accent-red)"}}>Dispatch Drone / Courier</button>
+                                <button type="submit" className="btn btn-primary" style={{flex:2,backgroundColor:"var(--accent-red)"}}>Add to Queue</button>
                                 <button type="button" onClick={closeModal} className="btn btn-secondary" style={{flex:1}}>Cancel</button>
                             </div>
                         </form>
                     </div>
-                ) : <TrackingView tracker={tracker} onClose={closeModal}/>}
+                ) : <QueueView queueNum={queueNum} priority={orderPriority} onPriorityChange={setOrderPriority} onClose={closeModal}/>}
             </div>
         </div>
 
@@ -708,8 +744,8 @@ const App = () => {
         <div className={`emergency-modal${activeModal==='family'?' active':''}`}>
             <div className="modal-content" style={{maxWidth:"500px",width:"95%"}}>
                 {modalStep===1
-                    ? <FamilyOrderForm onCancel={closeModal} onSubmit={()=>runSimulation(familySimCfg)}/>
-                    : <TrackingView tracker={tracker} onClose={closeModal}/>}
+                    ? <FamilyOrderForm onCancel={closeModal} onSubmit={submitToQueue}/>
+                    : <QueueView queueNum={queueNum} priority={orderPriority} onPriorityChange={setOrderPriority} onClose={closeModal}/>}
             </div>
         </div>
 
@@ -717,8 +753,8 @@ const App = () => {
         <div className={`emergency-modal${activeModal==='prescription'?' active':''}`}>
             <div className="modal-content" style={{maxWidth:"550px",width:"95%"}}>
                 {modalStep===1
-                    ? <RxOrderForm onCancel={closeModal} onSubmit={()=>runSimulation(rxSimCfg)}/>
-                    : <TrackingView tracker={tracker} onClose={closeModal}/>}
+                    ? <RxOrderForm onCancel={closeModal} onSubmit={submitToQueue}/>
+                    : <QueueView queueNum={queueNum} priority={orderPriority} onPriorityChange={setOrderPriority} onClose={closeModal}/>}
             </div>
         </div>
         </>
